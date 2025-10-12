@@ -2,12 +2,12 @@ from scipy import stats
 
 # GENERATION PARAMETERS
 SEED = 150
-N_users = 30000
+N_users = 6000
 N_years = 3
-N_groups = 3000
+N_groups = 500
 count_dist = stats.expon(scale=1.0)  # mean=1.0, var=1.0
-N_posts = 75000
-N_activities = 1500
+N_posts = 10000
+N_activities = 500
 Avg_comments_per_post = 50
 mode = "exponential" # user join date, options: "linear", "exponential"
 rate = 0.6  # for exponential distribution of registration dates
