@@ -65,31 +65,304 @@ try {
 // Task 1
 // ---------------------------------------------------------------------------------------------
 print("Task 1")
-// Code Here Pls
+
+var startDate = ISODate("2022-12-31T23:59:59Z");
+
+db.users.aggregate([
+    {
+        $lookup: {
+            from: "post",
+            localField: "created_posts.$oid",
+            foreignField: "_id",
+            as: "post_details"
+        }
+    },
+    {
+        $lookup: {
+            from: "comment",
+            localField: "writes_comments.$oid",
+            foreignField: "_id",
+            as: "comment_details"
+        }
+    },
+    {
+        $project: {
+            _id: 0,
+            user_id: "$_id",
+            username: "$username",
+            all_activities: {
+                $concatArrays: [
+                    "$joined_groups.joined_at", 
+                    "$post_details.created_at",
+                    "$comment_details.written_at" 
+                ]
+            }
+        }
+    },
+    {
+        $project: {
+            user_id: "$user_id",
+            username: "$username",
+            latest_activity: { $max: "$all_activities"}
+        }
+    },
+    {
+        $match: {
+            latest_activity: { $lte: startDate }
+        }
+    },
+    {
+        $project: {
+            user_id: "$user_id",
+            username: "$username",
+            time_difference_ms: {
+                $subtract: [
+                    startDate,
+                    "$latest_activity"
+                ]
+            }
+        }
+    },
+    {
+        $project: {
+            user_id: "$user_id",
+            username: "$username",
+            days_inactive: {
+                $round: [
+                    { $divide: ["$time_difference_ms", 86400000] },
+                    0 
+                ]
+            }
+        }
+    },
+
+    { $sort: { days_inactive: -1 } }
+]);
 
 // ---------------------------------------------------------------------------------------------
 // Task 2
 // ---------------------------------------------------------------------------------------------
 print("Task 2")
-// Code Here Pls
+
+var startDate = ISODate("2022-12-31T23:59:59Z");
+
+db.groups.aggregate([
+    {
+        $lookup: {
+            from: "post",
+            localField: "posts.$oid",
+            foreignField: "_id",
+            as: "recent_posts"
+        }
+    },
+    {
+        $addFields: {
+            recent_posts: {
+                $filter: {
+                    input: "$recent_posts",
+                    as: "post",
+                    cond: { $gte: ["$$post.created_at", startDate] }
+                }
+            }
+        }
+    },
+    {
+        $project: {
+            _id: 0,
+            group_id: "$_id",
+            group_name: "$name",
+            posts_7_days: { $size: "$recent_posts" },
+            member_count: 0 
+        }
+    },
+    {
+        $match: { posts_7_days: { $gt: 0 } }
+    },
+    {
+        $lookup: {
+            from: "user",
+            pipeline: [
+                {
+                    $match: {
+                        "joined_groups.group_id": "$$group_id"
+                    }
+                },
+                { $count: "member_count" }
+            ],
+            as: "member_data",
+            let: { group_id: "$group_id" }
+        }
+    },
+    {
+        $project: {
+            group_id: "$group_id",
+            group_name: "$group_name",
+            posts_7_days: "$posts_7_days",
+            member_count: { $ifNull: [{ $arrayElemAt: ["$member_data.member_count", 0] }, 0] }
+        }
+    },
+
+    { $sort: { posts_7_days: -1 } },
+
+    { $limit: 10 }
+]);
 
 // ---------------------------------------------------------------------------------------------
 // Task 3
 // ---------------------------------------------------------------------------------------------
 print("Task 3")
-// Code Here Pls
+
+var startDate = ISODate("2022-12-31T23:59:59Z");
+
+db.users.aggregate([
+    { $unwind: "$joined_groups" },
+
+    {
+        $match: {
+            "joined_groups.joined_at": { $gte: startDate }
+        }
+    },
+    {
+        $group: {
+            _id: "$joined_groups.group_id",
+            new_member_count: { $sum: 1 }
+        }
+    },
+    {
+        $lookup: {
+            from: "group",
+            localField: "_id",
+            foreignField: "_id",
+            as: "group_info"
+        }
+    },
+    {  $unwind: "$group_info" },
+
+    { $sort: { new_member_count: -1 } },
+
+    { $limit: 10 },
+
+    {
+        $project: {
+            _id: 0,
+            group_id: "$_id",
+            group_name: "$group_info.name",
+            new_member_count: "$new_member_count"
+        }
+    }
+]);
 
 // ---------------------------------------------------------------------------------------------
 // Task 4
 // ---------------------------------------------------------------------------------------------
 print("Task 4")
-// Code Here Pls
+
+var startOfMonth = ISODate("2022-12-31T00:00:00Z");
+var endOfMonth = ISODate("2022-12-31T23:59:59Z");
+
+db.post.aggregate([
+    {
+        $match: {
+            "created_at": { 
+                $gte: startOfMonth, 
+                $lt: endOfMonth
+            }
+        }
+    },
+    {
+        $lookup: {
+            from: "activity",
+            localField: "activity",
+            foreignField: "_id",
+            as: "activity_details"
+        }
+    },
+
+    { $unwind: "$activity_details" },
+
+    {
+        $group: {
+            _id: "$user_id",
+            total_distance: { $sum: "$activity_details.distance_m" },
+            total_steps: { $sum: "$activity_details.steps" }
+        }
+    },
+    {
+        $lookup: {
+            from: "user",
+            localField: "_id",
+            foreignField: "_id",
+            as: "user_info"
+        }
+    },
+    { $unwind: "$user_info" },
+    
+    { $sort: { total_distance: -1 } },
+
+    { $limit: 20 },
+    
+    {
+        $project: {
+            _id: 0,
+            user_id: "$_id",
+            username: "$user_info.username",
+            total_distance: "$total_distance",
+            total_steps: "$total_steps"
+        }
+    }
+]);
 
 // ---------------------------------------------------------------------------------------------
 // Task 5
 // ---------------------------------------------------------------------------------------------
 print("Task 5")
-// Code Here Pls
+var startOfMonth = ISODate("2022-12-31T00:00:00Z");
+var endOfMonth = ISODate("2022-12-31T23:59:59Z");
+
+db.post.aggregate([
+    {
+        $match: {
+            "created_at": { 
+                $gte: startOfMonth, 
+                $lt: endOfMonth
+            }
+        }
+    },
+    {
+        $lookup: {
+            from: "activity",
+            localField: "activity",
+            foreignField: "_id",
+            as: "activity_details"
+        }
+    },
+    
+    { $unwind: "$activity_details" },
+    
+    {
+        $group: {
+            _id: { 
+                region: "$activity_details.region",
+                month: { $month: "$created_at" }
+            },
+            total_post_count: { $sum: 1 } 
+        }
+    },
+    {
+        $sort: { 
+            "_id.region": 1,
+            "_id.month": 1
+        }
+    },
+    {
+        $project: {
+            _id: 0,
+            region: "$_id.region",
+            month: "$_id.month",
+            total_post_count: "$total_post_count"
+        }
+    }
+]);
 
 // ---------------------------------------------------------------------------------------------
 // Task 6
