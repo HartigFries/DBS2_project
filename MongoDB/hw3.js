@@ -1,63 +1,100 @@
 db.users.insertMany([
-    {
-        _id: 9901, username: "Sample Alice", country: "cz",
-        join_date: ISODate("2022-11-15T10:00:00Z"),
-        joined_groups: [{ group_id: 9950, joined_at: ISODate("2022-11-16T10:00:00Z") }],
-        created_posts: [ 9981 ]
-    },
-    {
-        _id: 9902, username: "Sample Bob", country: "us",
-        join_date: ISODate("2022-12-05T10:00:00Z"),
-        joined_groups: [],
-        created_posts: [ 9982 ]
-    }
-]);
+        {
+            _id: 99001,
+            username: "Alice Commercial (CZ)",
+            country: "cz",
+            join_date: ISODate("2020-01-10T00:00:00Z"),
+            joined_groups: [{ group_id: 99001, joined_at: ISODate("2020-01-12T00:00:00Z") }],
+            created_posts: [ 99001 ],
+            is_commercial: 1
+        },
+        {
+            _id: 99002,
+            username: "Bob Newbie (US)",
+            country: "us",
+            join_date: ISODate("2022-11-15T10:00:00Z"),
+            joined_groups: [{ group_id: 99002, joined_at: ISODate("2022-11-16T10:00:00Z") }],
+            created_posts: [ 99002 ],
+            is_commercial: 0
+        },
+        {
+            _id: 99003,
+            username: "Charlie Inactive (DE)",
+            country: "de",
+            join_date: ISODate("2022-12-05T10:00:00Z"),
+            joined_groups: [],
+            created_posts: [],
+            is_commercial: 0
+        }
+    ]);
 
 db.groups.insertMany([
-    {
-        _id: 9950, name: "Sample Hikers", country: "cz",
-        posts: [ 9981 ],
-        last_activity: ISODate("2022-10-01T00:00:00Z")
-    },
-    {
-        _id: 9951, name: "Active Runners", country: "us",
-        posts: [ 9982 ],
-        last_activity: ISODate("2022-12-25T00:00:00Z")
-    }
-]);
+        {
+            _id: 99001,
+            name: "Dead Group CZ",
+            country: "cz",
+            posts: [ 99001 ],
+            last_activity: ISODate("2022-10-01T00:00:00Z")
+        },
+        {
+            _id: 99002,
+            name: "Active Group US",
+            country: "us",
+            posts: [ 99002 ],
+            last_activity: ISODate("2022-12-20T00:00:00Z")
+        }
+    ]);
 
 db.activities.insertMany([
-    { _id: 50, region: "Sample Alps", country: "cz", distance_m: 5000, base_elev_m: 200, total_elev_m: 500 },
-    { _id: 9970, region: "Sample Canyon", country: "us", distance_m: 10000, base_elev_m: 1000, total_elev_m: 200 }
-]);
+        {
+            _id: 50,
+            region: "Sumava", country: "cz", distance_m: 15000, base_elev_m: 800, total_elev_m: 1200
+        },
+        {
+            _id: 99002, region: "Grand Canyon", country: "us", distance_m: 5000, base_elev_m: 200, total_elev_m: 100
+        }
+    ]);
 
 db.posts.insertMany([
-    {
-        _id: 9981,
-        text: "Autumn hike!",
-        created_at: ISODate("2022-10-15T14:00:00Z"),
-        tags: [ 9902 ],
-        group: 9950,
-        activity: 50
-    },
-    {
-        _id: 9982,
-        text: "Winter running.",
-        created_at: ISODate("2022-12-05T09:00:00Z"),
-        tags: [ 9901 ],
-        group: 9951,
-        activity: 9970
-    }
-]);
+        {
+            _id: 99001,
+            text: "Commercial Post in October",
+            created_at: ISODate("2022-10-15T14:00:00Z"),
+            tags: [ 99002 ],
+            group: 99001,
+            user: 99001,
+            activity: null
+        },
+        {
+            _id: 99002,
+            text: "Onboarding Post",
+            created_at: ISODate("2022-11-17T09:00:00Z"),
+            tags: [],
+            group: 99002,
+            user: 99002,
+
+            activity: ObjectId("000000000000000000000032")
+        },
+        {
+            _id: 99003,
+            text: "December Group Post",
+            created_at: ISODate("2022-12-05T18:30:00Z"),
+            tags: [ 99001 ],
+            group: 99002,
+            user: 99002,
+            activity: 50
+        }
+    ]);
+
 
 db.comments.insertMany([
-    {
-        _id: 9991,
-        user_id: 9901,
-        post_id: 9981,
-        written_at: ISODate("2022-10-05T10:00:00Z")
-    }
-]);
+        {
+            _id: 99001,
+            user_id: 99003,
+            post_id: 99001, /
+            written_at: ISODate("2022-10-16T10:00:00Z")
+        }
+    ]);
 
 // ---------------------------------------------------------------------------------------------
 // Task 1
