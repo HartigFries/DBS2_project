@@ -284,31 +284,296 @@ db.posts.aggregate([
 // Task 15
 // ---------------------------------------------------------------------------------------------
 
-// Code Here Pls
+db.users.createIndex({ join_date: 1 });
+db.posts.createIndex({ created_at: 1 });
+
+var startDate = ISODate("2022-11-01T00:00:00Z");
+var endDate = ISODate("2022-12-31T23:59:59Z");
+
+db.users.aggregate([
+    {
+        $match: {
+            join_date: { $gte: startDate, $lt: endDate }
+        }
+    },
+    { $limit: 20 },
+    {
+        $addFields: {
+            deadline: { $add: ["$join_date", 7 * 24 * 60 * 60 * 1000] }
+        }
+    },
+    {
+        $addFields: {
+            joined_first_group: {
+                $gt: [
+                    {
+                        $size: {
+                            $filter: {
+                                input: "$joined_groups",
+                                as: "g",
+                                cond: { $lte: ["$$g.joined_at", "$deadline"] }
+                            }
+                        }
+                    }, 0
+                ]
+            }
+        }
+    },
+    {
+        $lookup: {
+            from: "posts",
+            localField: "created_posts",
+            foreignField: "_id",
+            as: "post_details"
+        }
+    },
+    {
+        $addFields: {
+            completed_first_share: {
+                $gt: [
+                    {
+                        $size: {
+                            $filter: {
+                                input: "$post_details",
+                                as: "p",
+                                cond: { $lte: ["$$p.created_at", "$deadline"] }
+                            }
+                        }
+                    }, 0
+                ]
+            }
+        }
+    },
+    {
+        $project: {
+            _id: 0,
+            username: 1,
+            join_date: 1,
+            country: 1,
+            completed_first_share: 1,
+            joined_first_group: 1
+        }
+    },
+    { $sort: { join_date: 1 } }
+
+]).forEach(printjson);
 
 // ---------------------------------------------------------------------------------------------
 // Task 16
 // ---------------------------------------------------------------------------------------------
 
-// Code Here Pls
+db.posts.createIndex({ created_at: 1 });
+db.comments.createIndex({ written_at: 1 });
+
+var referenceDate = ISODate("2022-12-31T23:59:59Z");
+var startDate = new Date(referenceDate - 90 * 24 * 60 * 60 * 1000);
+
+db.posts.aggregate([
+    {
+        $match: {
+            created_at: { $gte: startDate, $lte: referenceDate }
+        }
+    },
+    {
+        $project: { timestamp: "$created_at", type: "post" }
+    },
+    {
+        $unionWith: {
+            coll: "comments",
+            pipeline: [
+                { $match: { written_at: { $gte: startDate, $lte: referenceDate } } },
+                { $project: { timestamp: "$written_at", type: "comment" } }
+            ]
+        }
+    },
+    {
+        $project: {
+            day: { $dayOfWeek: "$timestamp" },
+            hour: { $hour: "$timestamp" }
+        }
+    },
+    {
+        $group: {
+            _id: { day: "$day", hour: "$hour" },
+            total_interactions: { $sum: 1 }
+        }
+    },
+    { $sort: { total_interactions: -1 } },
+    { $limit: 5 },
+    {
+        $project: {
+            _id: 0,
+            day_of_week: "$_id.day",
+            hour_of_day: "$_id.hour",
+            total_interactions: 1
+        }
+    }
+
+]).forEach(printjson);
 
 // ---------------------------------------------------------------------------------------------
 // Task 19
 // ---------------------------------------------------------------------------------------------
 
-// Code Here Pls
+db.users.createIndex({ country: 1 });
+db.activities.createIndex({ country: 1 });
+
+db.users.aggregate([
+
+    {
+        $group: {
+            _id: "$country",
+            userCount: { $sum: 1 }
+        }
+    },
+    {
+        $lookup: {
+            from: "activities",
+            localField: "_id",
+            foreignField: "country",
+            as: "paths_in_region"
+        }
+    },
+    {
+        $project: {
+            region: "$_id",
+            active_users: "$userCount",
+            path_count: { $size: "$paths_in_region" },
+            _id: 0
+        }
+    },
+    {
+        $project: {
+            region: 1,
+            active_users: 1,
+            path_count: 1,
+            user_to_path_ratio: {
+                $cond: {
+                    if: { $eq: ["$path_count", 0] },
+                    then: 0,
+                    else: { $divide: ["$active_users", "$path_count"] }
+                }
+            }
+        }
+    },
+    { $sort: { user_to_path_ratio: -1 } },
+    { $limit: 10 }
+
+]).forEach(printjson);
 
 // ---------------------------------------------------------------------------------------------
 // Task 20
 // ---------------------------------------------------------------------------------------------
 
-// Code Here Pls
+db.users.createIndex({ join_date: 1 });
+
+var referenceDate = ISODate("2023-01-01T00:00:00Z");
+var startDate = new Date(referenceDate - 90 * 24 * 60 * 60 * 1000);
+
+db.users.aggregate([
+    {
+        $match: {
+            join_date: { $gte: startDate, $lte: referenceDate }
+        }
+    },
+    {
+        $project: {
+            step1_registered: { $literal: 1 },
+
+            step2_joined: {
+                $cond: [{ $gt: [{ $size: "$joined_groups" }, 0] }, 1, 0]
+            },
+            step3_posted: {
+                $cond: [{ $gt: [{ $size: "$created_posts" }, 0] }, 1, 0]
+            }
+        }
+    },
+    {
+        $group: {
+            _id: null,
+            total_reg: { $sum: "$step1_registered" },
+            total_join: { $sum: "$step2_joined" },
+            total_post: { $sum: "$step3_posted" }
+        }
+    },
+    {
+        $project: {
+            _id: 0,
+            steps: [
+                {
+                    step: "1. Registered",
+                    count: "$total_reg",
+                    rate: "100%"
+                },
+                {
+                    step: "2. Joined First Group",
+                    count: "$total_join",
+                    rate: {
+                        $concat: [
+                            { $toString: { $multiply: [{ $divide: ["$total_join", "$total_reg"] }, 100] } },
+                            "%"
+                        ]
+                    }
+                },
+                {
+                    step: "3. Created First Post",
+                    count: "$total_post",
+                    rate: {
+                        $concat: [
+                            { $toString: { $multiply: [{ $divide: ["$total_post", "$total_reg"] }, 100] } },
+                            "%"
+                        ]
+                    }
+                }
+            ]
+        }
+    },
+    { $unwind: "$steps" },
+    { $replaceRoot: { newRoot: "$steps" } }
+]).forEach(printjson);
 
 // ---------------------------------------------------------------------------------------------
 // Task 21
 // ---------------------------------------------------------------------------------------------
 
-// Code Here Pls
+db.groups.createIndex({ last_activity: 1 });
+
+var referenceDate = ISODate("2023-01-01T00:00:00Z");
+var thresholdDate = new Date(referenceDate - 60 * 24 * 60 * 60 * 1000);
+
+db.groups.aggregate([
+    {
+        $match: {
+            last_activity: { $lt: thresholdDate }
+        }
+    },
+    {
+        $lookup: {
+            from: "users",
+            localField: "_id",
+            foreignField: "joined_groups.group_id",
+            as: "members"
+        }
+    },
+    {
+        $project: {
+            _id: 0,
+            group_id: "$_id",
+            group_name: "$name",
+            member_count: { $size: "$members" },
+
+            days_since_last_activity: {
+                $floor: {
+                    $divide: [
+                        { $subtract: [referenceDate, "$last_activity"] },
+                        1000 * 60 * 60 * 24
+                    ]
+                }
+            }
+        }
+    },
+    { $sort: { days_since_last_activity: -1 } }
+]).forEach(printjson);
 
 // ---------------------------------------------------------------------------------------------
 
