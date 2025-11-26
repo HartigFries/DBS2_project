@@ -1,5 +1,6 @@
 import csv
 import json
+import ast
 from datetime import datetime
 """
 After creating json files, we imported the data into mongodb using these commands:
@@ -22,6 +23,13 @@ def format_date(date_str):
     """
     Converts a date string into the MongoDB Extended JSON Date format: {"$date": "..."}
     """
+    if date_str is None:
+        return None
+
+    date_str = str(date_str).strip()
+    if not date_str:
+        return None
+
     date_formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d"]
     for fmt in date_formats:
         try:
@@ -30,6 +38,22 @@ def format_date(date_str):
         except ValueError:
             continue
     return None
+
+
+def open_prefer_fixed(base_name):
+    """
+    Helper: prefer ../<name>_fixed.csv, fall back to ../<name>.csv
+    """
+    fixed = f"../{base_name}_fixed.csv"
+    original = f"../{base_name}.csv"
+    try:
+        return open(fixed, "r", encoding="utf-8")
+    except FileNotFoundError:
+        return open(original, "r", encoding="utf-8")
+
+
+# 0. helper mapping post -> group (for posts.group)
+post_to_group = {}
 
 
 # 1. users.json
@@ -42,7 +66,11 @@ with open('../users.csv', 'r', encoding='utf-8') as f:
         user_id = int(row['user_id'])
         users[user_id] = {
             "_id": {"$oid": get_oid_string(user_id)},
+            # needed for Tasks 6, 8, 12 projections
+            "user_id": user_id,
             "username": row['username'],
+            # needed for Task 8 ("postCreator.is_commercial")
+            "is_commercial": int(row.get('is_commercial', 0)),
             "country": row['country'],
             "join_date": format_date(row['join_date']),
             "joined_groups": [],
@@ -62,8 +90,8 @@ with open('../group_joins.csv', 'r', encoding='utf-8') as f:
                 "joined_at": format_date(row['join_date'])
             })
 
-# 1.2 Process user_shares_posts.csv
-with open('../user_shares_posts.csv', 'r', encoding='utf-8') as f:
+# 1.2 Process user_shares_posts.csv to fill created_posts
+with open_prefer_fixed('user_shares_posts') as f:
     reader = csv.DictReader(f)
     for row in reader:
         user_id = int(row['user_id'])
@@ -90,6 +118,7 @@ except FileNotFoundError:
 with open('users.json', 'w', encoding='utf-8') as f:
     json.dump(list(users.values()), f, indent=4, ensure_ascii=False)
 
+
 # 2. groups.json
 groups = {}
 
@@ -99,6 +128,8 @@ with open('../groups.csv', 'r', encoding='utf-8') as f:
         group_id = int(row['group_id'])
         groups[group_id] = {
             "_id": {"$oid": get_oid_string(group_id)},
+            # needed for Task 7 projection
+            "group_id": group_id,
             "name": row['group_name'],
             "posts": [],
             "last_activity": {"$date": "1970-01-01T00:00:00Z"}
@@ -107,13 +138,15 @@ with open('../groups.csv', 'r', encoding='utf-8') as f:
 if 0 not in groups:
     groups[0] = {
         "_id": {"$oid": "000000000000000000000000"},
+        "group_id": 0,
         "name": "Main Page (Default)",
         "posts": [],
         "last_activity": {"$date": "2023-01-01T00:00:00Z"}
     }
 
+# 2.1 Process post_in_group.csv
 try:
-    with open('../post_in_group.csv', 'r', encoding='utf-8') as f:
+    with open_prefer_fixed('post_in_group') as f:
         reader = csv.DictReader(f)
         for row in reader:
             clean_group_id = row['group_id'].strip("[]")
@@ -126,9 +159,12 @@ try:
                     post_oid = {"$oid": get_oid_string(pid)}
                     if post_oid not in groups[gid]["posts"]:
                         groups[gid]["posts"].append(post_oid)
+                    # remember mapping for posts.group
+                    post_to_group[pid] = gid
 except FileNotFoundError:
     pass
 
+# 2.2 Update last_activity per group based on joins
 with open('../group_joins.csv', 'r', encoding='utf-8') as f:
     reader = csv.DictReader(f)
     for row in reader:
@@ -141,6 +177,7 @@ with open('../group_joins.csv', 'r', encoding='utf-8') as f:
 with open('groups.json', 'w', encoding='utf-8') as f:
     json.dump(list(groups.values()), f, indent=4, ensure_ascii=False)
 
+
 # 3. posts.json
 posts = {}
 
@@ -152,23 +189,55 @@ with open('../posts.csv', 'r', encoding='utf-8') as f:
 
         activity_ref = {"$oid": get_oid_string(aid)} if aid is not None else None
 
+        # group for Task 7
+        gid = post_to_group.get(post_id)
+        group_ref = {"$oid": get_oid_string(gid)} if gid is not None else None
+
         posts[post_id] = {
             "_id": {"$oid": get_oid_string(post_id)},
             "activity": activity_ref,
-            "created_at": None
+            "created_at": None,
+            # needed for Tasks 8 and 12
+            "user": None,
+            # needed for Task 7
+            "group": group_ref,
+            # needed for Tasks 6 and 7
+            "tags": []
         }
 
-with open('../user_shares_posts.csv', 'r', encoding='utf-8') as f:
+# 3.1 Fill created_at, user and tags from user_shares_posts(_fixed).csv
+with open_prefer_fixed('user_shares_posts') as f:
     reader = csv.DictReader(f)
     for row in reader:
         post_id = int(row['post_id'])
         if post_id in posts:
+            # created_at (already used in several tasks)
             posts[post_id]["created_at"] = format_date(row['created_at'])
 
+            # creator of the post (for Tasks 8 & 12)
+            user_id = row.get('user_id')
+            if user_id:
+                uid = int(user_id)
+                posts[post_id]["user"] = {"$oid": get_oid_string(uid)}
+
+            # tags: list of user_ids tagged in the post (for Tasks 6 & 7)
+            tags_raw = row.get('tags', '')
+            if tags_raw:
+                try:
+                    tags_list = ast.literal_eval(tags_raw)
+                    if isinstance(tags_list, list):
+                        for tagged_user_id in tags_list:
+                            posts[post_id]["tags"].append({"$oid": get_oid_string(int(tagged_user_id))})
+                except (SyntaxError, ValueError):
+                    # if parsing fails, leave tags empty for this post
+                    pass
+
+# keep only posts that actually have a timestamp (as in original)
 valid_posts = [p for p in posts.values() if p["created_at"] is not None]
 
 with open('posts.json', 'w', encoding='utf-8') as f:
     json.dump(valid_posts, f, indent=4, ensure_ascii=False)
+
 
 # 4. activities.json
 activities = []
@@ -187,13 +256,19 @@ with open('../activities.csv', 'r', encoding='utf-8') as f:
 
         activities.append({
             "_id": {"$oid": get_oid_string(activity_id)},
+            # needed in Task 14 grouping key
+            "activity_id": activity_id,
             "region": row['region'],
             "distance_m": float(row['distance_m']),
+            # needed for Task 14 (weather classification + avg_total_elev_m)
+            "base_elev_m": float(row['base_elev_m']),
+            "total_elev_m": float(row['total_elev_m']),
             "country": clean_country
         })
 
 with open('activities.json', 'w', encoding='utf-8') as f:
     json.dump(activities, f, indent=4, ensure_ascii=False)
+
 
 # 5. comments.json
 comments = []
@@ -201,9 +276,19 @@ comments = []
 for row in comments_data_for_users:
     comment_id = int(row['comment_id'])
 
+    user_id = row.get('user_id')
+    post_id = row.get('post_id')
+
+    # commenter ObjectId (for Task 8)
+    user_ref = {"$oid": get_oid_string(int(user_id))} if user_id not in (None, '') else None
+    # post the comment is attached to (for Task 8)
+    post_ref = {"$oid": get_oid_string(int(post_id))} if post_id not in (None, '') else None
+
     comment_doc = {
         "_id": {"$oid": get_oid_string(comment_id)},
-        "written_at": format_date(row['written_at'])
+        "written_at": format_date(row.get('written_at')),
+        "user": user_ref,
+        "post": post_ref
     }
 
     comments.append(comment_doc)
