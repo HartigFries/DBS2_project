@@ -70,9 +70,15 @@ var startDate = ISODate("2022-12-31T23:59:59Z");
 
 db.users.aggregate([
     {
+        $addFields: {
+            post_ids: "$created_posts.0",
+            comment_ids: "$writes_comments.0"
+        }
+    },
+    {
         $lookup: {
             from: "post",
-            localField: "created_posts.$oid",
+            localField: "post_ids",
             foreignField: "_id",
             as: "post_details"
         }
@@ -80,7 +86,7 @@ db.users.aggregate([
     {
         $lookup: {
             from: "comment",
-            localField: "writes_comments.$oid",
+            localField: "comments_ids",
             foreignField: "_id",
             as: "comment_details"
         }
@@ -143,22 +149,16 @@ var startDate = ISODate("2022-12-31T23:59:59Z");
 
 db.groups.aggregate([
     {
-        $lookup: {
-            from: "post",
-            localField: "posts.$oid",
-            foreignField: "_id",
-            as: "recent_posts"
+        $addFields: {
+	    post_ids: "posts.0"
         }
     },
     {
-        $addFields: {
-            recent_posts: {
-                $filter: {
-                    input: "$recent_posts",
-                    as: "post",
-                    cond: { $gte: ["$$post.created_at", startDate] }
-                }
-            }
+        $lookup: {
+            from: "post",
+            localField: "post_ids",
+            foreignField: "_id",
+            as: "recent_posts"
         }
     },
     {
@@ -167,13 +167,14 @@ db.groups.aggregate([
             group_id: "$_id",
             group_name: "$name",
             posts_7_days: { $size: "$recent_posts" },
-            member_count: 0 
+            member_count: { $literal: 0} 
         }
     },
     { $match: { posts_7_days: { $gt: 0 } } },
     {
         $lookup: {
             from: "user",
+	    let: { group_id: "$group_is" },
             pipeline: [
                 {
                     $match: {
@@ -183,15 +184,15 @@ db.groups.aggregate([
                 { $count: "member_count" }
             ],
             as: "member_data",
-            let: { group_id: "$group_id" }
         }
     },
     {
         $project: {
-            group_id: "$group_id",
+            _id: 0,
+	    group_id: "group_id",
             group_name: "$group_name",
             posts_7_days: "$posts_7_days",
-            member_count: { $ifNull: [{ $arrayElemAt: ["$member_data.member_count", 0] }, 0] }
+            member_count: { $ifNull: [{ $arrayElemAt: ["$member_data.member_count", 0] }, 0] } 
         }
     },
     { $sort: { posts_7_days: -1 } },
@@ -212,6 +213,7 @@ db.users.aggregate([
             "joined_groups.joined_at": { $gte: startDate }
         }
     },
+
     {
         $group: {
             _id: "$joined_groups.group_id",
@@ -779,7 +781,7 @@ db.users.aggregate([
 // ---------------------------------------------------------------------------------------------
 // Task 20
 // ---------------------------------------------------------------------------------------------
-cprint("Task 20")
+print("Task 20")
 db.users.createIndex({ join_date: 1 });
 
 var referenceDate = ISODate("2023-01-01T00:00:00Z");
