@@ -106,11 +106,7 @@ db.users.aggregate([
             latest_activity: { $max: "$all_activities"}
         }
     },
-    {
-        $match: {
-            latest_activity: { $lte: startDate }
-        }
-    },
+    { $match: { latest_activity: { $lte: startDate } } },
     {
         $project: {
             user_id: "$user_id",
@@ -135,9 +131,8 @@ db.users.aggregate([
             }
         }
     },
-
     { $sort: { days_inactive: -1 } }
-]);
+]).forEach(printjson);
 
 // ---------------------------------------------------------------------------------------------
 // Task 2
@@ -175,16 +170,14 @@ db.groups.aggregate([
             member_count: 0 
         }
     },
-    {
-        $match: { posts_7_days: { $gt: 0 } }
-    },
+    { $match: { posts_7_days: { $gt: 0 } } },
     {
         $lookup: {
             from: "user",
             pipeline: [
                 {
                     $match: {
-                        "joined_groups.group_id": "$$group_id"
+                        "joined_groups.group_id.$oid": "$$group_id"
                     }
                 },
                 { $count: "member_count" }
@@ -201,11 +194,9 @@ db.groups.aggregate([
             member_count: { $ifNull: [{ $arrayElemAt: ["$member_data.member_count", 0] }, 0] }
         }
     },
-
     { $sort: { posts_7_days: -1 } },
-
     { $limit: 10 }
-]);
+]).forEach(printjson);
 
 // ---------------------------------------------------------------------------------------------
 // Task 3
@@ -216,7 +207,6 @@ var startDate = ISODate("2022-12-31T23:59:59Z");
 
 db.users.aggregate([
     { $unwind: "$joined_groups" },
-
     {
         $match: {
             "joined_groups.joined_at": { $gte: startDate }
@@ -237,11 +227,8 @@ db.users.aggregate([
         }
     },
     {  $unwind: "$group_info" },
-
     { $sort: { new_member_count: -1 } },
-
     { $limit: 10 },
-
     {
         $project: {
             _id: 0,
@@ -250,7 +237,7 @@ db.users.aggregate([
             new_member_count: "$new_member_count"
         }
     }
-]);
+]).forEach(printjson);
 
 // ---------------------------------------------------------------------------------------------
 // Task 4
@@ -277,9 +264,7 @@ db.post.aggregate([
             as: "activity_details"
         }
     },
-
     { $unwind: "$activity_details" },
-
     {
         $group: {
             _id: "$user_id",
@@ -296,11 +281,8 @@ db.post.aggregate([
         }
     },
     { $unwind: "$user_info" },
-    
     { $sort: { total_distance: -1 } },
-
     { $limit: 20 },
-    
     {
         $project: {
             _id: 0,
@@ -310,7 +292,7 @@ db.post.aggregate([
             total_steps: "$total_steps"
         }
     }
-]);
+]).forEach(printjson);
 
 // ---------------------------------------------------------------------------------------------
 // Task 5
@@ -336,9 +318,7 @@ db.post.aggregate([
             as: "activity_details"
         }
     },
-    
     { $unwind: "$activity_details" },
-    
     {
         $group: {
             _id: { 
@@ -362,7 +342,7 @@ db.post.aggregate([
             total_post_count: "$total_post_count"
         }
     }
-]);
+]).forEach(printjson);
 
 // ---------------------------------------------------------------------------------------------
 // Task 6
@@ -378,7 +358,7 @@ db.posts.aggregate([
     { $unwind: "$tags" },
     {
         $group: {
-            _id: "$tags",              // tagged user (ObjectId)
+            _id: "$tags",
             tagCount: { $sum: 1 }
         }
     },
@@ -387,7 +367,7 @@ db.posts.aggregate([
     {
         $lookup: {
             from: "users",
-            localField: "_id",         // ObjectId
+            localField: "_id",
             foreignField: "_id",
             as: "user"
         }
@@ -420,7 +400,7 @@ db.posts.aggregate([
     { $unwind: "$tags" },
     {
         $group: {
-            _id: "$group",             // group ObjectId
+            _id: "$group",
             tagCount: { $sum: 1 }
         }
     },
@@ -459,7 +439,7 @@ db.comments.aggregate([
     {
         $lookup: {
             from: "posts",
-            localField: "post",        // post ObjectId
+            localField: "post",
             foreignField: "_id",
             as: "post"
         }
@@ -468,7 +448,7 @@ db.comments.aggregate([
     {
         $lookup: {
             from: "users",
-            localField: "post.user",   // creator of the post
+            localField: "post.user",
             foreignField: "_id",
             as: "postCreator"
         }
@@ -476,12 +456,12 @@ db.comments.aggregate([
     { $unwind: "$postCreator" },
     {
         $match: {
-            "postCreator.is_commercial": 1   // keep only ad posts
+            "postCreator.is_commercial": 1
         }
     },
     {
         $group: {
-            _id: "$user",                    // commenter ObjectId
+            _id: "$user",
             adEngagementCount: { $sum: 1 }
         }
     },
@@ -515,12 +495,12 @@ print("Task 12")
 db.posts.aggregate([
     {
         $match: {
-            activity: ObjectId("000000000000000000000032")   // activity 50
+            activity: ObjectId("000000000000000000000032")
         }
     },
     {
         $group: {
-            _id: "$user",           // user ObjectId
+            _id: "$user",
             attempts: { $sum: 1 },
             firstAttempt: { $min: "$created_at" },
             lastAttempt: { $max: "$created_at" }
@@ -799,7 +779,7 @@ db.users.aggregate([
 // ---------------------------------------------------------------------------------------------
 // Task 20
 // ---------------------------------------------------------------------------------------------
-print("Task 20")
+cprint("Task 20")
 db.users.createIndex({ join_date: 1 });
 
 var referenceDate = ISODate("2023-01-01T00:00:00Z");
@@ -911,4 +891,3 @@ db.groups.aggregate([
 ]).forEach(printjson);
 
 // ---------------------------------------------------------------------------------------------
-
