@@ -145,40 +145,48 @@ db.users.aggregate([
 // ---------------------------------------------------------------------------------------------
 print("Task 2")
 
-var startDate = ISODate("2022-12-31T23:59:59Z");
+var now = ISODate("2022-12-31T23:59:59Z"); 
+
+var startDate = new Date(now.getTime() - 86400000 * 7);
+startDate = ISODate(startDate.toISOString());
 
 db.groups.aggregate([
     {
-        $addFields: {
-	    post_ids: "posts.0"
-        }
-    },
-    {
         $lookup: {
-            from: "post",
-            localField: "post_ids",
+            from: "posts",
+            localField: "posts", 
             foreignField: "_id",
             as: "recent_posts"
         }
     },
     {
+        $addFields: {
+            recent_posts: {
+                $filter: {
+                    input: "$recent_posts",
+                    as: "post",
+                    cond: { $gte: ["$$post.created_at", startDate] }
+                }
+            }
+        }
+    },
+    {
         $project: {
-            _id: 0,
             group_id: "$_id",
             group_name: "$name",
             posts_7_days: { $size: "$recent_posts" },
-            member_count: { $literal: 0} 
+            member_count: { $literal: 0 } 
         }
     },
     { $match: { posts_7_days: { $gt: 0 } } },
     {
         $lookup: {
-            from: "user",
-	    let: { group_id: "$group_is" },
+            from: "users",
+            let: { group_id_ref: "$group_id" }, 
             pipeline: [
                 {
                     $match: {
-                        "joined_groups.group_id.$oid": "$$group_id"
+                        "joined_groups.group_id": "$$group_id_ref"
                     }
                 },
                 { $count: "member_count" }
@@ -189,7 +197,7 @@ db.groups.aggregate([
     {
         $project: {
             _id: 0,
-	    group_id: "group_id",
+            group_id: "$group_id",
             group_name: "$group_name",
             posts_7_days: "$posts_7_days",
             member_count: { $ifNull: [{ $arrayElemAt: ["$member_data.member_count", 0] }, 0] } 
@@ -197,6 +205,7 @@ db.groups.aggregate([
     },
     { $sort: { posts_7_days: -1 } },
     { $limit: 10 }
+
 ]).forEach(printjson);
 
 // ---------------------------------------------------------------------------------------------
@@ -204,7 +213,10 @@ db.groups.aggregate([
 // ---------------------------------------------------------------------------------------------
 print("Task 3")
 
-var startDate = ISODate("2022-12-31T23:59:59Z");
+var now = ISODate("2022-12-31T23:59:59Z"); 
+
+var startDate = new Date(now.getTime() - 86400000 * 7);
+startDate = ISODate(startDate.toISOString());
 
 db.users.aggregate([
     { $unwind: "$joined_groups" },
@@ -246,8 +258,8 @@ db.users.aggregate([
 // ---------------------------------------------------------------------------------------------
 print("Task 4")
 
-var startOfMonth = ISODate("2022-12-31T00:00:00Z");
-var endOfMonth = ISODate("2022-12-31T23:59:59Z");
+var startOfMonth = ISODate("2022-11-31T00:00:00Z");
+var endOfMonth = ISODate("2022-12-31T00:00:00Z");
 
 db.post.aggregate([
     {
@@ -300,8 +312,8 @@ db.post.aggregate([
 // Task 5
 // ---------------------------------------------------------------------------------------------
 print("Task 5")
-var startOfMonth = ISODate("2022-12-31T00:00:00Z");
-var endOfMonth = ISODate("2022-12-31T23:59:59Z");
+var startOfMonth = ISODate("2022-11-31T00:00:00Z");
+var endOfMonth = ISODate("2022-12-31T00:00:00Z");
 
 db.post.aggregate([
     {
@@ -893,3 +905,4 @@ db.groups.aggregate([
 ]).forEach(printjson);
 
 // ---------------------------------------------------------------------------------------------
+
