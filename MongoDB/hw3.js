@@ -77,7 +77,7 @@ db.users.aggregate([
     },
     {
         $lookup: {
-            from: "post",
+            from: "posts",
             localField: "post_ids",
             foreignField: "_id",
             as: "post_details"
@@ -85,7 +85,7 @@ db.users.aggregate([
     },
     {
         $lookup: {
-            from: "comment",
+            from: "comments",
             localField: "comments_ids",
             foreignField: "_id",
             as: "comment_details"
@@ -225,7 +225,6 @@ db.users.aggregate([
             "joined_groups.joined_at": { $gte: startDate }
         }
     },
-
     {
         $group: {
             _id: "$joined_groups.group_id",
@@ -234,7 +233,7 @@ db.users.aggregate([
     },
     {
         $lookup: {
-            from: "group",
+            from: "groups",
             localField: "_id",
             foreignField: "_id",
             as: "group_info"
@@ -258,10 +257,10 @@ db.users.aggregate([
 // ---------------------------------------------------------------------------------------------
 print("Task 4")
 
-var startOfMonth = ISODate("2022-11-31T00:00:00Z");
+var startOfMonth = ISODate("2022-11-30T00:00:00Z");
 var endOfMonth = ISODate("2022-12-31T00:00:00Z");
 
-db.post.aggregate([
+db.posts.aggregate([
     {
         $match: {
             "created_at": { 
@@ -272,7 +271,7 @@ db.post.aggregate([
     },
     {
         $lookup: {
-            from: "activity",
+            from: "activities",
             localField: "activity",
             foreignField: "_id",
             as: "activity_details"
@@ -282,13 +281,12 @@ db.post.aggregate([
     {
         $group: {
             _id: "$user_id",
-            total_distance: { $sum: "$activity_details.distance_m" },
-            total_steps: { $sum: "$activity_details.steps" }
+            total_distance: { $sum: "$activity_details.distance_m" }
         }
     },
     {
         $lookup: {
-            from: "user",
+            from: "users",
             localField: "_id",
             foreignField: "_id",
             as: "user_info"
@@ -302,8 +300,7 @@ db.post.aggregate([
             _id: 0,
             user_id: "$_id",
             username: "$user_info.username",
-            total_distance: "$total_distance",
-            total_steps: "$total_steps"
+            total_distance: "$total_distance"
         }
     }
 ]).forEach(printjson);
@@ -315,7 +312,7 @@ print("Task 5")
 var startOfMonth = ISODate("2022-11-31T00:00:00Z");
 var endOfMonth = ISODate("2022-12-31T00:00:00Z");
 
-db.post.aggregate([
+db.posts.aggregate([
     {
         $match: {
             "created_at": { 
@@ -326,7 +323,7 @@ db.post.aggregate([
     },
     {
         $lookup: {
-            from: "activity",
+            from: "activities",
             localField: "activity",
             foreignField: "_id",
             as: "activity_details"
