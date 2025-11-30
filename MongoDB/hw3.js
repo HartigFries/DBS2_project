@@ -1,3 +1,4 @@
+
 try {
 
     db.users.insertMany([

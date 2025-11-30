@@ -43,7 +43,6 @@ def format_date(date_str):
 
 
 def open_prefer_fixed(base_name):
-    """Helper: prefer ../<name>_fixed.csv, fall back to ../<name>.csv"""
     fixed = f"../{base_name}_fixed.csv"
     original = f"../{base_name}.csv"
     try:
@@ -52,11 +51,9 @@ def open_prefer_fixed(base_name):
         return open(original, "r", encoding="utf-8")
 
 
-# --- 0. Helper structures ---
 post_to_group_map = {}  # Mapping post_id -> group_id
 
 # --- 1. USERS ---
-print("Processing Users...")
 users = {}
 comments_data_buffer = []  # Store raw comment rows to process later
 
@@ -97,17 +94,14 @@ with open_prefer_fixed('user_shares_posts') as f:
         if user_id in users:
             users[user_id]["created_posts"].append({"$oid": get_oid_string(post_id)})
 
-# 1.3 Comments (OPRAVA: Generujeme ID, protože v CSV chybí)
+# 1.3 Comments
 try:
     with open('../comments.csv', 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
-        # Použijeme enumerate, abychom vygenerovali ID od 1 výše
         for i, row in enumerate(reader, 1):
-            # Přidáme vygenerované ID do řádku pro pozdější použití
             row['generated_id'] = i
             comments_data_buffer.append(row)
 
-            # Link comment to user immediately
             user_id = int(row['user_id'])
             if user_id in users:
                 users[user_id]["writes_comments"].append({"$oid": get_oid_string(i)})
@@ -118,7 +112,6 @@ with open('users.json', 'w', encoding='utf-8') as f:
     json.dump(list(users.values()), f, indent=4, ensure_ascii=False)
 
 # --- 2. GROUPS ---
-print("Processing Groups...")
 groups = {}
 
 with open('../groups.csv', 'r', encoding='utf-8') as f:
@@ -168,7 +161,6 @@ with open('groups.json', 'w', encoding='utf-8') as f:
     json.dump(list(groups.values()), f, indent=4, ensure_ascii=False)
 
 # --- 3. POSTS ---
-print("Processing Posts...")
 posts = {}
 
 with open('../posts.csv', 'r', encoding='utf-8') as f:
@@ -216,7 +208,6 @@ with open('posts.json', 'w', encoding='utf-8') as f:
     json.dump(valid_posts, f, indent=4, ensure_ascii=False)
 
 # --- 4. ACTIVITIES ---
-print("Processing Activities...")
 activities = []
 country_map = {"Czech Republic": "cz", "Germany": "de", "Poland": "pl", "United States": "us"}
 
@@ -240,11 +231,9 @@ with open('activities.json', 'w', encoding='utf-8') as f:
     json.dump(activities, f, indent=4, ensure_ascii=False)
 
 # --- 5. COMMENTS ---
-print("Processing Comments...")
 comments = []
 
 for row in comments_data_buffer:
-    # OPRAVA: Používáme vygenerované ID z kroku 1.3
     comment_id = row['generated_id']
 
     uid = int(row['user_id'])
@@ -263,4 +252,4 @@ for row in comments_data_buffer:
 with open('comments.json', 'w', encoding='utf-8') as f:
     json.dump(comments, f, indent=4, ensure_ascii=False)
 
-print("Done! JSON files generated.")
+print("Done.")
