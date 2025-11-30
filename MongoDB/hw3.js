@@ -77,7 +77,7 @@ db.users.aggregate([
     },
     {
         $lookup: {
-            from: "post",
+            from: "posts",
             localField: "post_ids",
             foreignField: "_id",
             as: "post_details"
@@ -85,7 +85,7 @@ db.users.aggregate([
     },
     {
         $lookup: {
-            from: "comment",
+            from: "comments",
             localField: "comments_ids",
             foreignField: "_id",
             as: "comment_details"
@@ -98,9 +98,9 @@ db.users.aggregate([
             username: "$username",
             all_activities: {
                 $concatArrays: [
-                    "$joined_groups.joined_at", 
+                    "$joined_groups.joined_at",
                     "$post_details.created_at",
-                    "$comment_details.written_at" 
+                    "$comment_details.written_at"
                 ]
             }
         }
@@ -109,7 +109,7 @@ db.users.aggregate([
         $project: {
             user_id: "$user_id",
             username: "$username",
-            latest_activity: { $max: "$all_activities"}
+            latest_activity: { $max: "$all_activities" }
         }
     },
     { $match: { latest_activity: { $lte: startDate } } },
@@ -132,7 +132,7 @@ db.users.aggregate([
             days_inactive: {
                 $round: [
                     { $divide: ["$time_difference_ms", 86400000] },
-                    0 
+                    0
                 ]
             }
         }
@@ -145,7 +145,7 @@ db.users.aggregate([
 // ---------------------------------------------------------------------------------------------
 print("Task 2")
 
-var now = ISODate("2022-12-31T23:59:59Z"); 
+var now = ISODate("2022-12-31T23:59:59Z");
 
 var startDate = new Date(now.getTime() - 86400000 * 7);
 startDate = ISODate(startDate.toISOString());
@@ -154,7 +154,7 @@ db.groups.aggregate([
     {
         $lookup: {
             from: "posts",
-            localField: "posts", 
+            localField: "posts",
             foreignField: "_id",
             as: "recent_posts"
         }
@@ -175,14 +175,14 @@ db.groups.aggregate([
             group_id: "$_id",
             group_name: "$name",
             posts_7_days: { $size: "$recent_posts" },
-            member_count: { $literal: 0 } 
+            member_count: { $literal: 0 }
         }
     },
     { $match: { posts_7_days: { $gt: 0 } } },
     {
         $lookup: {
             from: "users",
-            let: { group_id_ref: "$group_id" }, 
+            let: { group_id_ref: "$group_id" },
             pipeline: [
                 {
                     $match: {
@@ -200,7 +200,7 @@ db.groups.aggregate([
             group_id: "$group_id",
             group_name: "$group_name",
             posts_7_days: "$posts_7_days",
-            member_count: { $ifNull: [{ $arrayElemAt: ["$member_data.member_count", 0] }, 0] } 
+            member_count: { $ifNull: [{ $arrayElemAt: ["$member_data.member_count", 0] }, 0] }
         }
     },
     { $sort: { posts_7_days: -1 } },
@@ -213,7 +213,7 @@ db.groups.aggregate([
 // ---------------------------------------------------------------------------------------------
 print("Task 3")
 
-var now = ISODate("2022-12-31T23:59:59Z"); 
+var now = ISODate("2022-12-31T23:59:59Z");
 
 var startDate = new Date(now.getTime() - 86400000 * 7);
 startDate = ISODate(startDate.toISOString());
@@ -234,13 +234,13 @@ db.users.aggregate([
     },
     {
         $lookup: {
-            from: "group",
+            from: "groups",
             localField: "_id",
             foreignField: "_id",
             as: "group_info"
         }
     },
-    {  $unwind: "$group_info" },
+    { $unwind: "$group_info" },
     { $sort: { new_member_count: -1 } },
     { $limit: 10 },
     {
@@ -258,21 +258,21 @@ db.users.aggregate([
 // ---------------------------------------------------------------------------------------------
 print("Task 4")
 
-var startOfMonth = ISODate("2022-11-31T00:00:00Z");
-var endOfMonth = ISODate("2022-12-31T00:00:00Z");
+var startOfMonth = ISODate("2022-11-30T00:00:00Z");
+var endOfMonth = ISODate("2022-12-30T00:00:00Z");
 
-db.post.aggregate([
+db.posts.aggregate([
     {
         $match: {
-            "created_at": { 
-                $gte: startOfMonth, 
+            "created_at": {
+                $gte: startOfMonth,
                 $lt: endOfMonth
             }
         }
     },
     {
         $lookup: {
-            from: "activity",
+            from: "activities",
             localField: "activity",
             foreignField: "_id",
             as: "activity_details"
@@ -281,14 +281,14 @@ db.post.aggregate([
     { $unwind: "$activity_details" },
     {
         $group: {
-            _id: "$user_id",
+            _id: "$user",
             total_distance: { $sum: "$activity_details.distance_m" },
             total_steps: { $sum: "$activity_details.steps" }
         }
     },
     {
         $lookup: {
-            from: "user",
+            from: "users",
             localField: "_id",
             foreignField: "_id",
             as: "user_info"
@@ -315,18 +315,18 @@ print("Task 5")
 var startOfMonth = ISODate("2022-11-31T00:00:00Z");
 var endOfMonth = ISODate("2022-12-31T00:00:00Z");
 
-db.post.aggregate([
+db.posts.aggregate([
     {
         $match: {
-            "created_at": { 
-                $gte: startOfMonth, 
+            "created_at": {
+                $gte: startOfMonth,
                 $lt: endOfMonth
             }
         }
     },
     {
         $lookup: {
-            from: "activity",
+            from: "activities",
             localField: "activity",
             foreignField: "_id",
             as: "activity_details"
@@ -335,15 +335,15 @@ db.post.aggregate([
     { $unwind: "$activity_details" },
     {
         $group: {
-            _id: { 
+            _id: {
                 region: "$activity_details.region",
                 month: { $month: "$created_at" }
             },
-            total_post_count: { $sum: 1 } 
+            total_post_count: { $sum: 1 }
         }
     },
     {
-        $sort: { 
+        $sort: {
             "_id.region": 1,
             "_id.month": 1
         }
@@ -453,7 +453,7 @@ db.comments.aggregate([
     {
         $lookup: {
             from: "posts",
-            localField: "post",
+            localField: "post_id",
             foreignField: "_id",
             as: "post"
         }
@@ -475,7 +475,7 @@ db.comments.aggregate([
     },
     {
         $group: {
-            _id: "$user",
+            _id: "$user_id",
             adEngagementCount: { $sum: 1 }
         }
     },
@@ -499,7 +499,7 @@ db.comments.aggregate([
             adEngagementCount: 1
         }
     }
-]).forEach(printjson);;
+]).forEach(printjson);
 
 
 // ---------------------------------------------------------------------------------------------
