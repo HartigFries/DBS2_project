@@ -13,16 +13,20 @@ try {
         { _id: 9009, username: "Gabriel", country: "cz", join_date: ISODate("2021-10-05T00:00:00Z"), joined_groups: [], created_posts: [], is_commercial: 0 },
         { _id: 9010, username: "Izák", country: "cz", join_date: ISODate("2021-11-01T00:00:00Z"), joined_groups: [], created_posts: [], is_commercial: 0 },
         { _id: 9011, username: "Abrahám", country: "us", join_date: ISODate("2021-12-20T00:00:00Z"), joined_groups: [], created_posts: [], is_commercial: 0 },
-        { _id: 9012, username: "Čestmír", country: "us", join_date: ISODate("2022-01-10T00:00:00Z"), joined_groups: [], created_posts: [], is_commercial: 0 }
+        { _id: 9012, username: "Čestmír", country: "us", join_date: ISODate("2022-01-10T00:00:00Z"), joined_groups: [], created_posts: [], is_commercial: 0 },
+        { _id: 9013, username: "Legolas", country: "cz", join_date: ISODate("2022-11-20T09:00:00Z"), joined_groups: [{ group_id: 9007, joined_at: ISODate("2022-11-21T10:00:00Z") }], created_posts: [9011], is_commercial: 0 },
+        { _id: 9014, username: "Gimli", country: "de", join_date: ISODate("2021-05-05T12:00:00Z"), joined_groups: [{ group_id: 9002, joined_at: ISODate("2022-12-10T15:00:00Z") }], created_posts: [9012], is_commercial: 0 },
+        { _id: 9015, username: "Eowyn", country: "us", join_date: ISODate("2022-12-15T08:00:00Z"), joined_groups: [{ group_id: 9002, joined_at: ISODate("2022-12-29T10:00:00Z") }], created_posts: [], is_commercial: 0 }
     ]);
 
     db.groups.insertMany([
         { _id: 9001, name: "Dead Group", country: "cz", posts: [9001], last_activity: ISODate("2022-10-01T00:00:00Z") },
-        { _id: 9002, name: "Active Group", country: "us", posts: [9002], last_activity: ISODate("2022-12-25T00:00:00Z") },
+        { _id: 9002, name: "Active Group", country: "us", posts: [9002, 9012, 9013], last_activity: ISODate("2022-12-28T18:00:00Z") },
         { _id: 9003, name: "Photo Club", country: "uk", posts: [], last_activity: ISODate("2022-11-01T00:00:00Z") },
         { _id: 9004, name: "Cooking", country: "fr", posts: [], last_activity: ISODate("2022-12-15T00:00:00Z") },
         { _id: 9005, name: "Tech", country: "us", posts: [], last_activity: ISODate("2022-09-01T00:00:00Z") },
-        { _id: 9006, name: "Gaming", country: "cz", posts: [], last_activity: ISODate("2022-12-30T00:00:00Z") }
+        { _id: 9006, name: "Gaming", country: "cz", posts: [], last_activity: ISODate("2022-12-30T00:00:00Z") },
+        { _id: 9007, name: "Archery Club", country: "cz", posts: [9011], last_activity: ISODate("2022-12-20T00:00:00Z") }
     ]);
 
     db.activities.insertMany([
@@ -31,7 +35,8 @@ try {
         { _id: 9003, region: "Alps", country: "de", distance_m: 20000, base_elev_m: 1500, total_elev_m: 3000 },
         { _id: 9004, region: "Tatras", country: "pl", distance_m: 12000, base_elev_m: 900, total_elev_m: 1500 },
         { _id: 9005, region: "Rockies", country: "us", distance_m: 25000, base_elev_m: 1200, total_elev_m: 2500 },
-        { _id: 9006, region: "Beskydy", country: "cz", distance_m: 8000, base_elev_m: 400, total_elev_m: 800 }
+        { _id: 9006, region: "Beskydy", country: "cz", distance_m: 8000, base_elev_m: 400, total_elev_m: 800 },
+        { _id: 9007, region: "Bohemian Paradise", country: "cz", distance_m: 18000, base_elev_m: 300, total_elev_m: 600 }
     ]);
 
     db.posts.insertMany([
@@ -44,7 +49,10 @@ try {
         { _id: 9007, text: "Hike", created_at: ISODate("2022-11-01T15:00:00Z"), tags: [9001], group: 9001, user: 9001, activity: 50 },
         { _id: 9008, text: "Winter", created_at: ISODate("2022-12-01T09:00:00Z"), tags: [], group: null, user: 9007, activity: null },
         { _id: 9009, text: "Wedding", created_at: ISODate("2022-10-20T10:00:00Z"), tags: [9003], group: null, user: 9002, activity: null },
-        { _id: 9010, text: "Horse riding", created_at: ISODate("2022-12-10T11:00:00Z"), tags: [9004], group: 9002, user: 9003, activity: null }
+        { _id: 9010, text: "Horse riding", created_at: ISODate("2022-12-10T11:00:00Z"), tags: [9004], group: 9002, user: 9003, activity: null },
+        { _id: 9011, text: "Elven accuracy", created_at: ISODate("2022-12-12T10:00:00Z"), tags: [9014], group: 9007, user: 9013, activity: 9007 },
+        { _id: 9012, text: "Dwarven stamina", created_at: ISODate("2022-12-20T14:00:00Z"), tags: [9013], group: 9002, user: 9014, activity: 9006 },
+        { _id: 9013, text: "Return of the King", created_at: ISODate("2022-12-28T18:00:00Z"), tags: [], group: 9002, user: 9001, activity: null }
     ]);
 
     db.comments.insertMany([
@@ -57,7 +65,10 @@ try {
         { _id: 9007, user_id: 9007, post_id: 9002, written_at: ISODate("2022-11-19T15:00:00Z") },
         { _id: 9008, user_id: 9008, post_id: 9003, written_at: ISODate("2022-12-07T18:00:00Z") },
         { _id: 9009, user_id: 9009, post_id: 9009, written_at: ISODate("2022-10-21T11:00:00Z") },
-        { _id: 9010, user_id: 9010, post_id: 9010, written_at: ISODate("2022-12-11T13:00:00Z") }
+        { _id: 9010, user_id: 9010, post_id: 9010, written_at: ISODate("2022-12-11T13:00:00Z") },
+        { _id: 9011, user_id: 9014, post_id: 9011, written_at: ISODate("2022-12-13T09:00:00Z") },
+        { _id: 9012, user_id: 9013, post_id: 9001, written_at: ISODate("2022-11-25T16:00:00Z") },
+        { _id: 9013, user_id: 9003, post_id: 9012, written_at: ISODate("2022-12-21T10:30:00Z") }
     ]);
 } catch (e) {
     print("Sample data already exist (skipping insert)");
